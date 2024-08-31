@@ -1,0 +1,31 @@
+server:
+  port: 0 #랜덤으로 포트 설정
+
+spring:
+  application:
+    name: catalog-service  #Eureka에 등록되는 서비스 이름
+  h2:
+    console:
+      enabled: true
+      settings:
+        web-allow-others: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    generate-ddl: true
+    database: h2
+    defer-datasource-initialization: true
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:testdb
+
+eureka:
+  instance:
+    instance-id: ${spring.application.name}:${spring.application.instance_id:${random.value}}  #포트가 중복으로 설정되어 구분하기 위한 인스턴스 아이디 값 설정
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://127.0.0.1:8761/eureka

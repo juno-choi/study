@@ -1,0 +1,15 @@
+server:
+  port: 0 #0번 포트로 지정하면 랜덤 포트를 사용하겠다는 설정
+
+spring:
+  application:
+    name: user-service
+
+eureka:
+  instance:
+    instance-id: ${spring.cloud.client.hostname}:${spring.application.instance_id:${random.value}}  #Eureka에 등록되는 서비스 이름에 대한 설정값
+  client:
+    register-with-eureka: true
+    fetch-registry: true  #Eureka 서버로부터 인스턴스들의 정보를 주기적으로 가져올지 설정
+    service-url:
+      defaultZone: http://127.0.0.1:8761/eureka #Eureka 서버 위치값 http://ip:포트/자원

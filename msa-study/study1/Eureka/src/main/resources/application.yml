@@ -1,0 +1,11 @@
+server:
+  port: 8761  #Eureka Server는 Web Service 개념으로 실행됨으로써 port번호가 필요
+
+spring:
+  application:
+    name: discoveryservice  #Micro Service는 각 서비스들을 구별하기 위한 ID값이 필요함 name=id
+
+eureka:
+  client:
+    register-with-eureka: false #Server이지만 Eureka library를 포함하고 있고 client들과 같이 자동으로 discovery에 등록이 되는데 그 현상을 막기 위해 false로 설정해준다.
+    fetch-registry: false

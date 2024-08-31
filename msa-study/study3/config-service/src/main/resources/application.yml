@@ -1,0 +1,22 @@
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-service
+  rabbitmq: #rabbitmq 설정 추가
+    host: 127.0.0.1
+    port: 5672
+    username: guest
+    password: guest
+  cloud:
+    config:
+      server:
+        git:
+          uri: file://C:/2022/msa-config
+
+management: #actuator 설정
+  endpoint:
+    web:
+      exposure:
+        include: health, busrefresh

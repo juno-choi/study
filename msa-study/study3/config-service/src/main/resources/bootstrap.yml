@@ -1,0 +1,6 @@
+encrypt:
+#  key: junoprojectsecretkey123 #대칭키에 사용되는 key 값
+  key-store:
+    location: file:///C:\2022\keystore\secretkey.jks
+    password: test1234
+    alias: secretkey
