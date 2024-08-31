@@ -1,4 +1,0 @@
-# git start
-
-# git flow start
-1. develop branch를 생성하였습니다.
