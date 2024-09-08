@@ -1,136 +1,76 @@
-# 🔴 Controller 만들기
+# 🔴 Querydsl
 
-지금까지 Service만 작성하고 실제로 Controller는 작성하지 않았다. 이제 Controller를 적용해보자.
+리스트를 불러오려고 했는데 페이징 처리가 필요해졌다. 페이징 처리를 할때 Querydsl을 적용하여 진행하면 좋을거 같아. Querydsl을 적용시키려고 한다.
 
-## 🟠 Controller 적용하기
+## 🟠 설정
 
-### 🟢 기존 Controller 쓰기
+### 🟢 gradle
 
-```java
-@RestController
-@RequestMapping("/api/v1")
-public class ProductController {
+```kt
+dependencies {
+	...
+	// ✅ querydsl을 설치합니다. ":jakarta"를 꼭 설정합니다
+	implementation("com.querydsl:querydsl-jpa:5.0.0:jakarta")
+	annotationProcessor("com.querydsl:querydsl-apt:5.0.0:jakarta")
+	// java.lang.NoClassDefFoundError(jakarta.persistence.Entity) 발생 대응
+	annotationProcessor("jakarta.persistence:jakarta.persistence-api") 
 }
 ```
 
-RestController를 적용하고 기본 값으로 `/api/v1`을 붙여주려고 한다. 근데 만드는 Controller마다 붙이는게 너무 귀찮을거 같아 Annotation으로 설정하려고 하다.
+gradle 설정이 꽤 애를 먹었다. kotlin으로 설정을 진행한 경우가 많진 않아서였다. 공식 문서에서도 maven 설정만 안내할 뿐 kotlin이 없어 한참을 찾은것 같다.
 
-### 🟢 @ApiController 만들기
+`설정 참고글` [Spring boot 3 버전에서 kotlin gradle에서 queryDSL 설정하기](https://v3.leedo.me/devs/118)
 
-```java
-@Target(ElementType.TYPE)
-@Retention(RetentionPolicy.RUNTIME)
-@RestController
-@RequestMapping("/api/v1")
-public @interface ApiController {
-}
-```
+`설정 후 에러 참고글` [java.lang.NoClassDefFoundError](https://velog.io/@gundorit/Spring-java.lang.NoClassDefFoundError-javaxpersistenceEntity)
 
-`@ApiController`를 Annotation으로 정의하고
+설정은 다음과 같이 의존성만 추가해주면 끝나는것 같다. 이전에는 더 많은 설정이 필요했는데 querydsl이 많이 편해졌다.
+
+### 🟢 Java 설정
 
 ```java
-@ApiController
-public class ProductController {
-}
-```
+@Configuration
+public class QuerydslConfig {
+    @PersistenceContext
+    private EntityManager em;
 
-기존에 Controller 적용 대신 다음과 같이 적용해준다.
-
-## 🟠 Swagger 적용하기
-
-### 🟢 Controller 처리
-
-```java
-@ApiController
-@RequiredArgsConstructor
-@Tag(name = "Product API", description = "Product API Documentation")
-public class ProductController {
-    private final ProductService productService;
-
-    @PostMapping("/product")
-    @Operation(summary = "상품 등록", description = "상품 등록 api")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "정상", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)),
-            @ApiResponse(responseCode = "500", description = "서버 에러", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)),
-    })
-    public ResponseEntity<ResponseData<PostProductResponse>> product(@RequestBody @Validated PostProductRequest productRequest, BindingResult bindingResult) {
-        if (bindingResult.hasErrors()) {
-            Map<String, String> errors = new HashMap<>();
-            bindingResult.getFieldErrors().forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(ResponseData.from(ResponseDataCode.SUCCESS, errors));
-        }
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ResponseData.from(ResponseDataCode.SUCCESS, productService.createProduct(productRequest)));
+    @Bean
+    public JPAQueryFactory querydsl() {
+        return new JPAQueryFactory(em);
     }
 }
 ```
 
-상품 Controller에 `@Tag()`를 추가해주고 각 Url에 대한 설명을 위해 `@Operation()` `@ApiResponse()`를 추가해준다.
+그리고 다음과 같이 Querydsl을 java에서 주입해주는 코드를 작성하면 끝난다.
 
-그리고 Controller에 추가적으로 `@Validated`와 `BindingResult`를 추가로 적용하여 유효성 검사를 추가해준다.
-
-```java
-@Getter
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
-public class PostProductRequest {
-
-    @NotNull(message = "상품명을 입력해 주세요.")
-    @JsonProperty("product_name")
-    @Schema(description = "상품명", example = "아리수")
-    private String productName;
-    @NotNull(message = "상품 무게를 입력해 주세요.")
-    @JsonProperty("product_weight")
-    @Schema(description = "상품 무게", example = "5")
-    private int productWeight;
-    @NotNull(message = "상품 타입을 입력해 주세요. ex) 사과는 11과")
-    @JsonProperty("product_type")
-    @Schema(description = "상품 타입", example = "11과")
-    private String productType;
-    @NotNull(message = "상품 가격을 입력해 주세요.")
-    @JsonProperty("product_price")
-    @Schema(description = "상품 가격", example = "100000")
-    private int productPrice;
-    @NotNull(message = "상품 수량을 입력해 주세요.")
-    @JsonProperty("product_stock")
-    @Schema(description = "상품 수량", example = "100")
-    private int productStock;
-
-    ...
-}
+정상 실행을 테스트 해보려면 build를 진행하고
 
 ```
-
-Request에 Swagger에 대한 추가 설정을 한다.
-
-![](https://velog.velcdn.com/images/ililil9482/post/d41e3b30-922e-4147-b486-adce8b1255fa/image.png)
-
-Swagger 추가 설정을 통해 테스트 시 기본 값과 API의 요청 Schema에 대한 설명을 추가해두었다.
-
-```java
-@Entity
-@Table(name = "product")
-@AllArgsConstructor(access = AccessLevel.PROTECTED)
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Builder
-@Getter
-public class ProductEntity extends CommonEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long productId;
-    private String productName;
-    private int productWeight;
-    private String productType;
-    @Enumerated(EnumType.STRING)
-    private ProductStatus productStatus;
-    private int productPrice;
-    private int productStock;
-
-    ...
-}
+build > generated > annotationProcessor > java > main
 ```
 
-추가로 Entity에 `@Enumerated(EnumType.STRING)`를 추가해두었다.
+쪽에 Q class가 생성되었는지 확인하면 된다.
 
+![](https://velog.velcdn.com/images/ililil9482/post/1462111c-345a-4574-b322-9295bebe2460/image.png)
+
+
+### 🟢 Jacoco exclude 추가
+
+바로 빌드를 눌렀더니 바로 터졌다. 그 이유는 jacoco 설정 때문이였는데
+
+```kt
+tasks.jacocoTestCoverageVerification {
+	violationRules {
+		rule {
+            ...
+
+			excludes = listOf(
+				"*.ApplingApplication*"
+				, "*.global.*"
+				, "*.Q*"
+			)
+		}
+	}
+}
+```
+기존에 exclude에 Q class를 제외시키도록 설정만 추가해주었다.
+Querydsl 적용 끝!
