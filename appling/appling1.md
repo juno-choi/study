@@ -2,7 +2,7 @@
 
 ## 🟠 Spring Initializr
 
-[##_Image|kage@6hgY9/btsJgRzpORj/2VjxES1blN1iSg0CSGDKe1/img.png|CDM|1.3|{"originWidth":1393,"originHeight":713,"style":"alignCenter"}_##]
+![](https://velog.velcdn.com/images/ililil9482/post/34d96e3b-50b3-49b7-8791-87a110c344c1/image.png)
 
 프로젝트 자체가 가볍게 해볼 내용으로 db와 web 정도만 세팅해서 진행하려고 한다.
 
@@ -14,7 +14,8 @@ h2가 가벼워서 좋지만 docker를 사용할 줄 안다면 docker compose su
 
 ## 🟠 프로젝트 실행
 
-[##_Image|kage@c5JYb7/btsJgIJm98j/aVXmgLU5Dnnffuj22AN6pk/img.png|CDM|1.3|{"originWidth":665,"originHeight":238,"style":"alignCenter"}_##]
+![](https://velog.velcdn.com/images/ililil9482/post/f4fd71f7-916a-4fe7-b4df-47c1e5f307a2/image.png)
+
 
 프로젝트를 실행시키고 해당 페이지로 접근했다면 정상적으로 실행 완료
 

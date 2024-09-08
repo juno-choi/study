@@ -63,6 +63,7 @@ public class HelloController {
 
 Contorller에 적용도 크게 어렵진 않다. 처음에는 붙는 어노테이션이 많은데 해당 부분은 간소화하는 어노테이션을 새롭게 생성해서 해도 좋을것 같다.
 
-[##_Image|kage@oF88V/btsJkaFkIsZ/ZfvFumKryOMku5x8vdan5K/img.png|CDM|1.3|{"originWidth":2239,"originHeight":817,"style":"alignCenter"}_##]
+![](https://velog.velcdn.com/images/ililil9482/post/2d570c67-806e-4db4-b9db-d00fb3ac49d5/image.png)
+
 
 [http://localhost:8080/swagger-ui/index.html#/](http://localhost:8080/swagger-ui/index.html#/)로 이동하면 api를 확인해볼 수 있다.
