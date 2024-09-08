@@ -1,44 +1,6 @@
-# 🔴 Controller 만들기
+# 🔴 Controller 예외처리
 
-지금까지 Service만 작성하고 실제로 Controller는 작성하지 않았다. 이제 Controller를 적용해보자.
-
-## 🟠 Controller 적용하기
-
-### 🟢 기존 Controller 쓰기
-
-```java
-@RestController
-@RequestMapping("/api/v1")
-public class ProductController {
-}
-```
-
-RestController를 적용하고 기본 값으로 `/api/v1`을 붙여주려고 한다. 근데 만드는 Controller마다 붙이는게 너무 귀찮을거 같아 Annotation으로 설정하려고 하다.
-
-### 🟢 @ApiController 만들기
-
-```java
-@Target(ElementType.TYPE)
-@Retention(RetentionPolicy.RUNTIME)
-@RestController
-@RequestMapping("/api/v1")
-public @interface ApiController {
-}
-```
-
-`@ApiController`를 Annotation으로 정의하고
-
-```java
-@ApiController
-public class ProductController {
-}
-```
-
-기존에 Controller 적용 대신 다음과 같이 적용해준다.
-
-## 🟠 Swagger 적용하기
-
-### 🟢 Controller 처리
+## 🟠 Controller 유효성 검사 예외처리
 
 ```java
 @ApiController
@@ -65,72 +27,85 @@ public class ProductController {
     }
 }
 ```
+현재는 다음과 같이 Map을 통해 처리가 되고 있고 유효성 검사가 들어가는 부분은 모두 해당 코드가 반복적으로 처리되어야 한다. 해당 부분을 공통으로 처리해보자.
 
-상품 Controller에 `@Tag()`를 추가해주고 각 Url에 대한 설명을 위해 `@Operation()` `@ApiResponse()`를 추가해준다.
-
-그리고 Controller에 추가적으로 `@Validated`와 `BindingResult`를 추가로 적용하여 유효성 검사를 추가해준다.
+### 🟢 Controller Advice 처리
 
 ```java
-@Getter
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
-public class PostProductRequest {
+@ApiController
+@RequiredArgsConstructor
+@Tag(name = "Product API", description = "Product API Documentation")
+public class ProductController {
+    private final ProductService productService;
 
-    @NotNull(message = "상품명을 입력해 주세요.")
-    @JsonProperty("product_name")
-    @Schema(description = "상품명", example = "아리수")
-    private String productName;
-    @NotNull(message = "상품 무게를 입력해 주세요.")
-    @JsonProperty("product_weight")
-    @Schema(description = "상품 무게", example = "5")
-    private int productWeight;
-    @NotNull(message = "상품 타입을 입력해 주세요. ex) 사과는 11과")
-    @JsonProperty("product_type")
-    @Schema(description = "상품 타입", example = "11과")
-    private String productType;
-    @NotNull(message = "상품 가격을 입력해 주세요.")
-    @JsonProperty("product_price")
-    @Schema(description = "상품 가격", example = "100000")
-    private int productPrice;
-    @NotNull(message = "상품 수량을 입력해 주세요.")
-    @JsonProperty("product_stock")
-    @Schema(description = "상품 수량", example = "100")
-    private int productStock;
-
-    ...
+    @PostMapping("/product")
+    @Operation(summary = "상품 등록", description = "상품 등록 api")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "정상", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)),
+            @ApiResponse(responseCode = "500", description = "서버 에러", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)),
+    })
+    public ResponseEntity<ResponseData<PostProductResponse>> product(@RequestBody @Validated PostProductRequest productRequest) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseData.from(ResponseDataCode.SUCCESS, productService.createProduct(productRequest)));
+    }
 }
 
 ```
+BindingResult 제거하였다. 그러면 잘못된 요청시
 
-Request에 Swagger에 대한 추가 설정을 한다.
+![](https://velog.velcdn.com/images/ililil9482/post/7d9ee2be-181e-4b27-9b81-d45f1cfb0f07/image.png)
 
-![](https://velog.velcdn.com/images/ililil9482/post/d41e3b30-922e-4147-b486-adce8b1255fa/image.png)
+다음과 같이 `MethodArgumentNotValidException`가 발생한다.
 
-Swagger 추가 설정을 통해 테스트 시 기본 값과 API의 요청 Schema에 대한 설명을 추가해두었다.
+이제 해당 에러를 컨트롤해보자.
 
 ```java
-@Entity
-@Table(name = "product")
-@AllArgsConstructor(access = AccessLevel.PROTECTED)
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
-@Getter
-public class ProductEntity extends CommonEntity {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long productId;
-    private String productName;
-    private int productWeight;
-    private String productType;
-    @Enumerated(EnumType.STRING)
-    private ProductStatus productStatus;
-    private int productPrice;
-    private int productStock;
+public record ResponseError(
+    String detail,
+    String message
+) {
+    public static ResponseError from(ObjectError f) {
+        return ResponseError.builder()
+                .detail(fieldConvertToSnakeCase(((FieldError) f).getField()))
+                .message(f.getDefaultMessage())
+                .build();
+    }
 
-    ...
+    private static String fieldConvertToSnakeCase(String field) {
+        return field.replaceAll("([a-z])([A-Z]+)", "$1_$2").toLowerCase();
+    }
 }
 ```
 
-추가로 Entity에 `@Enumerated(EnumType.STRING)`를 추가해두었다.
+우선 에러를 반환할때 필요한 데이터를 정의한다.
 
+```java
+@RestControllerAdvice
+public class GlobalControllerAdvice {
+
+    @ExceptionHandler
+    public ResponseEntity<ProblemDetail> methodArgumentNotValidException(MethodArgumentNotValidException e) {
+
+        List<ResponseError> errors = e.getBindingResult().getAllErrors().stream()
+                .map(ResponseError::from)
+                .collect(Collectors.toList());
+        HttpStatus httpStatus = HttpStatus.BAD_REQUEST;
+
+        ProblemDetail problemDetail = createProblemDetailFrom(httpStatus, "잘못된 입력입니다.", errors);
+        return ResponseEntity.status(httpStatus).body(problemDetail);
+    }
+
+    private static ProblemDetail createProblemDetailFrom(HttpStatus httpStatus, String detail, List<ResponseError> errors) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(httpStatus, detail);
+        problemDetail.setProperty("errors", errors);
+        return problemDetail;
+    }
+}
+```
+
+그 후 `RestControllerAdvice`에 MethodArgumentNotValidException 핸들링을 처리해주면 입력되는 데이터의 유효성 검사를 자동으로 처리할 수 있다.
+
+### ✅ 문제 해결
+
+이번 작업을 하면서 @RestControllerAdvice를 적용했을 때 Swagger가 500 에러가 발생하는 문제가 있었다. 해당 문제는 Spring Boot 3.4.0 M2 버전에서 발생한 에러로 아직 해당 문제가 해결되지 않은것으로 보인다. 우선은 문제 해결을 위해 3.3.3 으로 버전을 낮춰서 사용하여 문제를 해결하였다.
