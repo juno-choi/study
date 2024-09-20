@@ -1,1 +1,12 @@
 .idea
+**/bin/
+**/target/
+**/build/
+**/out/
+**/dist/
+**/build.gradle
+**/pom.xml
+**/package-lock.json
+**/yarn.lock
+**/.gradle
+
